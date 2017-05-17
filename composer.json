@@ -1,0 +1,19 @@
+{
+    "name": "root/workspace",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Nick",
+            "email": "nick.gatti@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "robmorgan/phinx": "^0.8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "nickgatti\\": "app/"
+        }
+    }
+}
