@@ -1,0 +1,5 @@
+vendor/
+.c9/
+bin/
+php.ini
+php_errors.log
