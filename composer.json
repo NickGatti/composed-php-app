@@ -9,11 +9,16 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "robmorgan/phinx": "^0.8.0"
+        "robmorgan/phinx": "^0.8.0",
+        "filp/whoops": "^2.1",
+        "aura/web": "^2.1",
+        "aura/router": "^3.1",
+        "zendframework/zend-diactoros": "^1.4",
+        "morris/lessql": "^0.3.4"
     },
     "autoload": {
         "psr-4": {
-            "nickgatti\\": "app/"
+            "NetAccessory\\": "app/"
         }
     }
 }
