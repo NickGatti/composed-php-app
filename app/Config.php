@@ -6,37 +6,71 @@ use \PDO;
 use \LessQL\Database;
 
 function loginController($request, $response) {
+    $error = '';
+    
+    if($request->post->get('username', false)) {
+        $db = Config::database();
+        
+        $username = htmlentities(
+            $request->post->get('username', '')
+        );
+        
+        $password = md5(
+            $request->post->get('password', 'password')
+        );
+        
+        $user = $db->users()
+            ->where('username', $username)
+            ->fetch();
+            
+        if(isset($user) && isset($user->password))     {
+            if($user->password === $password) {
+                $_SESSION['user'] = $username;
+                $_SESSION['token'] = crypt($password, "\$5\${$username}");
+                $response->redirect->to('/');
+                return $response;
+            }
+        }
+    }
+    
     $view = new View('form/index', [
         'title' => 'Login',
         'username' => $request->post->get('username', ''),
         'password' => $request->post->get('password', 'password'),
         'register' => false,
-        'button' => 'Log In'
+        'button' => 'Log In',
+        'error' => $error
     ]);
     $response->content->set($view->render());
     return $response;
 }
 
 function createController($request, $response) {
-    if($request->post->get('username', false)) {
+    $error = '';
+    
+    if ($request->post->get('username', false)) {
         $db = Config::database();
         
         $drow = $db->createRow('details', [
             'email' => htmlentities($request->post->get('email'))
         ]);
-        
         $row = $db->createRow('users', [
             'username' => htmlentities($request->post->get('username')),
             'password' => md5($request->post->get('password')),
             'detail' => $drow
-            ]);
-            
-        $db->begin();
-        $drow->save();
-        $row->save();
-        $db->commit();
+        ]);
+        
+        try {
+            $db->begin();
+            $drow->save();
+            $row->save();
+            $db->commit();
+            $response->redirect->to('/');
+            return $response;
+        } catch(Throwable $e) {
+            $error = $e->getMessage();
+        }
     }
-    
     
     $view = new View('form/index', [
         'title' => 'Register',
@@ -44,7 +78,8 @@ function createController($request, $response) {
         'password' => $request->post->get('password', 'password'),
         'email' => $request->post->get('email', ''),
         'register' => true,
-        'button' => 'Register'
+        'button' => 'Register',
+        'error' => $error
     ]);
     $response->content->set($view->render());
     return $response;
@@ -53,7 +88,7 @@ function createController($request, $response) {
 class Config {
     
     static function database() {
-        $pdo = new PDO('mysql:dbname=c9;host=0.0.0.0', 'nickgatti', '');
+        $pdo = new PDO('mysql:dbname=c9;host=0.0.0.0', 'netaccessory', '');
         $db = new Database($pdo);
         return $db;
     }
@@ -80,7 +115,14 @@ class Config {
                         return $response;
                     }
                     
-                    $view = new View('index', ['title' => "Beautiful HTML"]);
+                    $rows = $db->table('animals')->fetchAll();
+                    $columns = isset($rows[0]) ? get_object_vars($rows[0]) : [];
+                    
+                    $view = new View('index', [
+                        'title' => "Beautiful HTML",
+                        'columns' => $columns,
+                        'rows' => $rows
+                    ]);
                     $response->content->set($view->render());
                     return $response;
                 }
@@ -110,9 +152,61 @@ class Config {
                 'controller' => 'NetAccessory\createController'
             ],
             [
+                'method'   => 'get',
+                'name' => 'logout',
+                'path' => '/logout',
+                'controller' => function($req, $resp) {
+                    session_destroy();
+                    session_write_close();
+                    session_start();
+                    session_regenerate_id();
+                    $resp->redirect->to('/');
+                    return $resp;
+                }
+            ],
+            [
                 'method' => 'get',
-                'name' => 'nick',
-                'path' => '/nick',
+                'name' => 'animals',
+                'path' => '/animals',
+                'controller' => function($a, $b) {
+                    if(!$a->headers->get('X-Requested-With', false)) {
+                        $view = new View('form/animals', [
+                            'title' => 'Create an animal, Home slice!',
+                        ]);
+                        $b->content->set($view->render());
+                        return $b;
+                    }
+                    
+                    $b->content->setType('application/json');
+                    $b->content->set(json_encode(['message' => 'hello nick!']));
+                    return $b;
+                }
+            ],
+            [
+                'method' => 'post',
+                'name' => 'animals.create',
+                'path' => '/animals',
+                'controller' => function($a, $b) {
+                    if(!$a->headers->get('X-Requested-With', false)) {
+                        $b->content->set('Nick! This is for javascript, Bro!');
+                        return $b;
+                    }
+                    
+                    $b->content->setType('application/json');
+                    $b->content->set(json_encode([
+                        'message' => 'hello nick!',
+                        'data' => [
+                            'request' => json_encode($a),
+                            'response' => json_encode($b)
+                        ]
+                    ]));
+                    return $b;
+                }
+            ],
+            [
+                'method' => 'get',
+                'name' => 'apinick',
+                'path' => '/apinick',
                 'controller' => function($a, $b) {
                     if(!$a->headers->get('X-Requested-With', false)) {
                         $b->content->set('Nick! This is for javascript, Bro!');

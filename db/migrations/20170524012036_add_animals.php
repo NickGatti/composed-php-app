@@ -2,7 +2,7 @@
 
 use Phinx\Migration\AbstractMigration;
 
-class MyFirstMigration extends AbstractMigration
+class AddAnimals extends AbstractMigration
 {
     /**
      * Change Method.
@@ -27,17 +27,16 @@ class MyFirstMigration extends AbstractMigration
      */
     public function change()
     {
-        $details = $this->table('details');
-        $details->addColumn('email', 'string', ['limit' => 64])
-            ->addIndex('email', ['unique' => true])
-            ->create();
-        
-        $users = $this->table('users');
-        $users->addColumn('username', 'string', ['limit' => 16])
-            ->addColumn('password', 'string', ['limit' => 32])
-            ->addColumn('detail_id', 'integer')
-            ->addIndex('username', ['unique' => true])
-            ->addForeignKey('detail_id', 'details', 'id')
+        $animals = $this->table('animals');
+        $animals->addColumn('color', 'string', ['limit' => 8])
+            ->addColumn('name', 'string', ['limit' => 64])
+            ->addColumn('description', 'string', ['limit' => 1024])
+            ->addColumn('image', 'string', ['limit' => 512])
+            ->addColumn('wearable', 'boolean')
+            ->addColumn('user_id', 'integer')
+            ->addIndex(['color'])
+            ->addIndex(['name'], ['unique' => true])
+            ->addForeignKey('user_id', 'users', 'id')
             ->create();
     }
 }
