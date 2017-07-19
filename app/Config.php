@@ -23,13 +23,13 @@ function loginController($request, $response) {
             ->where('username', $username)
             ->fetch();
             
-        if(isset($user) && isset($user->password))     {
+        if(isset($user) && isset($user->password)) {
             if($user->password === $password) {
                 $_SESSION['user'] = $username;
                 $_SESSION['token'] = crypt($password, "\$5\${$username}");
                 $response->redirect->to('/');
                 return $response;
-            }
+            }   
         }
     }
     
@@ -116,7 +116,9 @@ class Config {
                     }
                     
                     $rows = $db->table('animals')->fetchAll();
-                    $columns = isset($rows[0]) ? get_object_vars($rows[0]) : [];
+                    $columns = isset($rows[0]) ? array_keys(
+                        json_decode(json_encode($rows[0]), true)
+                    ) : [];
                     
                     $view = new View('index', [
                         'title' => "Beautiful HTML",
@@ -152,7 +154,7 @@ class Config {
                 'controller' => 'NetAccessory\createController'
             ],
             [
-                'method'   => 'get',
+                'method' => 'get',
                 'name' => 'logout',
                 'path' => '/logout',
                 'controller' => function($req, $resp) {
@@ -172,6 +174,46 @@ class Config {
                     if(!$a->headers->get('X-Requested-With', false)) {
                         $view = new View('form/animals', [
                             'title' => 'Create an animal, Home slice!',
+                            'user' => (object) $_SESSION,
+                            'id' => '',
+                            'name' => '',
+                            'color' => '',
+                            'image' => '',
+                            'description' => '',
+                            'wearable' => false,
+                            'editing' => 'false'
+                        ]);
+                        $b->content->set($view->render());
+                        return $b;
+                    }
+                    
+                    $b->content->setType('application/json');
+                    $b->content->set(json_encode(['message' => 'hello nick!']));
+                    return $b;
+                }
+            ],
+            [
+                'method' => 'get',
+                'name' => 'animals.edit',
+                'path' => '/animals/{animal}',
+                'controller' => function($a, $b) {
+                    $db = Config::database();
+                    
+                    $animal = $db->table('animals')
+                        ->where('id', $a->attributes->animal)
+                        ->fetch();
+                    
+                    if(!$a->headers->get('X-Requested-With', false)) {
+                        $view = new View('form/animals', [
+                            'title' => 'Create an animal, Home slice!',
+                            'user' => (object) $_SESSION,
+                            'id' => $animal->id,
+                            'name' => $animal->name,
+                            'color' => $animal->color,
+                            'image' => $animal->image,
+                            'description' => $animal->description,
+                            'wearable' => (boolean) $animal->wearable,
+                            'editing' => 'true'
                         ]);
                         $b->content->set($view->render());
                         return $b;
@@ -192,28 +234,136 @@ class Config {
                         return $b;
                     }
                     
+                    $db = Config::database();
                     $b->content->setType('application/json');
+                    
+                    $user = $db->table('users')
+                        ->where('username', $a->post->get('username'))
+                        ->fetch();
+                        
+                    if(!$user) {
+                        // Error
+                        $b->content->set(json_encode([
+                            'message' => "Failed. {$a->post->get('username')} is not a valid user.",
+                            'code' => '404'
+                        ]));
+                        $b->status->setCode('404');
+                        return $b;
+                    }
+                    
+                    if(crypt($user->password, "\$5\${$user->username}") !== $a->post->get('token')) {
+                        $b->content->set(json_encode([
+                            'message' => "Not authorized, Yo!",
+                            'code' => '403'
+                        ]));
+                        $b->status->setCode('403');
+                        return $b;
+                    }
+                    
+                    try {
+                        $row = $db->createRow('animals', [
+                            'color' => $a->post->get('color'),
+                            'name' => $a->post->get('name'),
+                            'description' => $a->post->get('description'),
+                            'image' => $a->post->get('image'),
+                            'wearable' => (boolean) $a->post->get('wearable'),
+                            'user' => $user
+                        ]);
+                        
+                        $db->begin();
+                        $row->save();
+                        $db->commit();
+                    } catch(\Throwable $e) {
+                        $b->content->set(json_encode([
+                            'message' => $e->getMessage(),
+                            'code' => '406'
+                        ]));
+                        $b->status->setCode('406');
+                        
+                        return $b;
+                    }
+                    
                     $b->content->set(json_encode([
-                        'message' => 'hello nick!',
+                        'message' => 'success',
                         'data' => [
                             'request' => json_encode($a),
-                            'response' => json_encode($b)
+                            'response' => json_encode($b),
+                            'post' => json_encode($a->post->get())
                         ]
                     ]));
                     return $b;
                 }
             ],
             [
-                'method' => 'get',
-                'name' => 'apinick',
-                'path' => '/apinick',
+                'method' => 'put',
+                'name' => 'animals.update',
+                'path' => '/animals',
                 'controller' => function($a, $b) {
                     if(!$a->headers->get('X-Requested-With', false)) {
                         $b->content->set('Nick! This is for javascript, Bro!');
                         return $b;
                     }
+                    
+                    $db = Config::database();
                     $b->content->setType('application/json');
-                    $b->content->set(json_encode(['message' => 'hello nick!']));
+                    
+                    
+                    
+                    $user = $db->table('users')
+                        ->where('username', $a->post->get('username'))
+                        ->fetch();
+                        
+                    if(!$user) {
+                        // Error
+                        $b->content->set(json_encode([
+                            'message' => "Failed. {$a->post->get('username')} is not a valid user.",
+                            'code' => '404'
+                        ]));
+                        $b->status->setCode('404');
+                        return $b;
+                    }
+                    
+                    if(crypt($user->password, "\$5\${$user->username}") !== $a->post->get('token')) {
+                        $b->content->set(json_encode([
+                            'message' => "Not authorized, Yo!",
+                            'code' => '403'
+                        ]));
+                        $b->status->setCode('403');
+                        return $b;
+                    }
+                    
+                    try {
+                        $row = $db->table('animals')
+                            ->where('id', $a->post->get('id'))
+                            ->fetch();
+                        
+                        $row->color = $a->post->get('color');
+                        $row->name = $a->post->get('name');
+                        $row->description = $a->post->get('description');
+                        $row->image = $a->post->get('image');
+                        $row->wearable = (boolean) $a->post->get('wearable');
+                        
+                        $db->begin();
+                        $row->save();
+                        $db->commit();
+                    } catch(\Throwable $e) {
+                        $b->content->set(json_encode([
+                            'message' => $e->getMessage(),
+                            'code' => '406'
+                        ]));
+                        $b->status->setCode('406');
+                        
+                        return $b;
+                    }
+                    
+                    $b->content->set(json_encode([
+                        'message' => 'success',
+                        'data' => [
+                            'request' => json_encode($a),
+                            'response' => json_encode($b),
+                            'post' => json_encode($a->post->get())
+                        ]
+                    ]));
                     return $b;
                 }
             ]

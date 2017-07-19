@@ -17,6 +17,7 @@ $Whoops =  new Whoops\Run;
 
 if($environment !== 'production') {
     $Whoops->pushHandler(new Whoops\Handler\PrettyPageHandler);
+    $Whoops->pushHandler(new Whoops\Handler\JsonResponseHandler);
 } else {
     $Whoops->pushHandler(function($e) {
         echo "TODO: Friendly error page, and email to Developer.";
