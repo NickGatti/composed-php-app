@@ -1,1 +1,3 @@
-#THIS IS HORRIBLE.COM
+# CRUD APP MCOR
+
+##### mysql-ctl start
